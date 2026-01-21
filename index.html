@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Camera - Advanced Camera Experience</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">
+                <svg width="32" height="32" viewBox="0 0 32 32">
+                    <circle cx="16" cy="16" r="14" fill="none" stroke="currentColor" stroke-width="2"/>
+                    <circle cx="16" cy="16" r="6" fill="currentColor"/>
+                    <path d="M16 2 L16 8 M16 24 L16 30 M2 16 L8 16 M24 16 L30 16" stroke="currentColor" stroke-width="2"/>
+                </svg>
+                <span>NEXUS CAM</span>
+            </div>
+            <div class="header-controls">
+                <button class="icon-btn" id="settingsBtn" title="Paramètres">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M12 1v6m0 6v6m-5.656-6.344l4.243 4.243m3.536-3.536l4.243 4.243M1 12h6m6 0h6m-6-5.656l4.243-4.243m-3.536 3.536l4.243-4.243"/>
+                    </svg>
+                </button>
+                <button class="icon-btn" id="galleryBtn" title="Galerie">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                        <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Camera View -->
+        <main class="camera-view">
+            <div class="video-container">
+                <video id="video" autoplay playsinline></video>
+                <canvas id="canvas"></canvas>
+                <canvas id="effectCanvas"></canvas>
+
+                <!-- Overlays -->
+                <div class="camera-overlays">
+                    <!-- Grid -->
+                    <div id="gridOverlay" class="grid-overlay hidden">
+                        <div class="grid-line grid-v" style="left: 33.33%"></div>
+                        <div class="grid-line grid-v" style="left: 66.66%"></div>
+                        <div class="grid-line grid-h" style="top: 33.33%"></div>
+                        <div class="grid-line grid-h" style="top: 66.66%"></div>
+                    </div>
+
+                    <!-- Histogram -->
+                    <div id="histogram" class="histogram hidden">
+                        <canvas id="histogramCanvas" width="256" height="100"></canvas>
+                    </div>
+
+                    <!-- Recording indicator -->
+                    <div id="recordingIndicator" class="recording-indicator hidden">
+                        <span class="rec-dot"></span>
+                        <span id="recordingTime">00:00</span>
+                    </div>
+
+                    <!-- Focus indicator -->
+                    <div id="focusIndicator" class="focus-indicator"></div>
+                </div>
+            </div>
+
+            <!-- Side Panel - Filters & Effects -->
+            <div class="side-panel" id="sidePanel">
+                <div class="panel-header">
+                    <h3>Effets</h3>
+                    <button class="icon-btn small" id="closePanelBtn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="panel-content">
+                    <!-- Filters -->
+                    <div class="section">
+                        <h4>Filtres</h4>
+                        <div class="filter-grid">
+                            <button class="filter-btn active" data-filter="none">
+                                <div class="filter-preview"></div>
+                                <span>Aucun</span>
+                            </button>
+                            <button class="filter-btn" data-filter="vintage">
+                                <div class="filter-preview filter-vintage"></div>
+                                <span>Vintage</span>
+                            </button>
+                            <button class="filter-btn" data-filter="cyberpunk">
+                                <div class="filter-preview filter-cyberpunk"></div>
+                                <span>Cyberpunk</span>
+                            </button>
+                            <button class="filter-btn" data-filter="vaporwave">
+                                <div class="filter-preview filter-vaporwave"></div>
+                                <span>Vaporwave</span>
+                            </button>
+                            <button class="filter-btn" data-filter="noir">
+                                <div class="filter-preview filter-noir"></div>
+                                <span>Noir</span>
+                            </button>
+                            <button class="filter-btn" data-filter="glitch">
+                                <div class="filter-preview filter-glitch"></div>
+                                <span>Glitch</span>
+                            </button>
+                            <button class="filter-btn" data-filter="neon">
+                                <div class="filter-preview filter-neon"></div>
+                                <span>Neon</span>
+                            </button>
+                            <button class="filter-btn" data-filter="thermal">
+                                <div class="filter-preview filter-thermal"></div>
+                                <span>Thermal</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Creative Modes -->
+                    <div class="section">
+                        <h4>Modes Créatifs</h4>
+                        <div class="mode-list">
+                            <button class="mode-btn" data-mode="particles">
+                                <span>🌟</span> Particules
+                            </button>
+                            <button class="mode-btn" data-mode="double-exposure">
+                                <span>👥</span> Double Exposition
+                            </button>
+                            <button class="mode-btn" data-mode="portrait">
+                                <span>🎭</span> Mode Portrait
+                            </button>
+                            <button class="mode-btn" data-mode="face-ar">
+                                <span>😀</span> AR Visage
+                            </button>
+                            <button class="mode-btn" data-mode="kaleidoscope">
+                                <span>🔷</span> Kaleidoscope
+                            </button>
+                            <button class="mode-btn" data-mode="pixelate">
+                                <span>🎮</span> Pixel Art
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Manual Controls -->
+                    <div class="section">
+                        <h4>Contrôles Manuels</h4>
+                        <div class="control-group">
+                            <label>
+                                <span>Luminosité</span>
+                                <input type="range" id="brightnessSlider" min="-100" max="100" value="0">
+                            </label>
+                            <label>
+                                <span>Contraste</span>
+                                <input type="range" id="contrastSlider" min="0" max="200" value="100">
+                            </label>
+                            <label>
+                                <span>Saturation</span>
+                                <input type="range" id="saturationSlider" min="0" max="200" value="100">
+                            </label>
+                            <label>
+                                <span>Netteté</span>
+                                <input type="range" id="sharpnessSlider" min="0" max="100" value="0">
+                            </label>
+                            <label>
+                                <span>Blur</span>
+                                <input type="range" id="blurSlider" min="0" max="20" value="0">
+                            </label>
+                            <label>
+                                <span>Vignette</span>
+                                <input type="range" id="vignetteSlider" min="0" max="100" value="0">
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Bottom Controls -->
+        <div class="bottom-controls">
+            <div class="control-row">
+                <!-- Left Controls -->
+                <div class="left-controls">
+                    <button class="icon-btn" id="flashBtn" title="Flash">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                        </svg>
+                    </button>
+                    <button class="icon-btn" id="gridBtn" title="Grille">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18"/>
+                            <line x1="3" y1="9" x2="21" y2="9"/>
+                            <line x1="3" y1="15" x2="21" y2="15"/>
+                            <line x1="9" y1="3" x2="9" y2="21"/>
+                            <line x1="15" y1="3" x2="15" y2="21"/>
+                        </svg>
+                    </button>
+                    <button class="icon-btn" id="histogramBtn" title="Histogramme">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="13" width="4" height="8"/>
+                            <rect x="10" y="8" width="4" height="13"/>
+                            <rect x="17" y="3" width="4" height="18"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Center Capture Button -->
+                <div class="center-controls">
+                    <div class="mode-selector">
+                        <button class="mode-tab active" data-mode="photo">PHOTO</button>
+                        <button class="mode-tab" data-mode="video">VIDÉO</button>
+                        <button class="mode-tab" data-mode="timelapse">TIME-LAPSE</button>
+                    </div>
+                    <button class="capture-btn" id="captureBtn">
+                        <div class="capture-ring"></div>
+                        <div class="capture-inner"></div>
+                    </button>
+                </div>
+
+                <!-- Right Controls -->
+                <div class="right-controls">
+                    <button class="icon-btn" id="switchCameraBtn" title="Changer de caméra">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 2l4 4-4 4"/>
+                            <path d="M3 11v-1a4 4 0 0 1 4-4h14"/>
+                            <path d="M7 22l-4-4 4-4"/>
+                            <path d="M21 13v1a4 4 0 0 1-4 4H3"/>
+                        </svg>
+                    </button>
+                    <button class="icon-btn" id="effectsBtn" title="Effets">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 16v-4M12 8h.01"/>
+                        </svg>
+                    </button>
+                    <button class="icon-btn" id="timerBtn" title="Timer">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="13" r="9"/>
+                            <polyline points="12 7 12 13 15 15"/>
+                            <path d="M9 2h6"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gallery Modal -->
+        <div id="galleryModal" class="modal hidden">
+            <div class="modal-content gallery-content">
+                <div class="modal-header">
+                    <h2>Galerie</h2>
+                    <button class="icon-btn" id="closeGalleryBtn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="gallery-grid" id="galleryGrid">
+                    <!-- Media items will be inserted here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settingsModal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Paramètres</h2>
+                    <button class="icon-btn" id="closeSettingsBtn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="settings-content">
+                    <div class="setting-group">
+                        <h3>Qualité Photo</h3>
+                        <select id="photoQuality">
+                            <option value="0.9">Haute (90%)</option>
+                            <option value="0.95" selected>Très haute (95%)</option>
+                            <option value="1.0">Maximale (100%)</option>
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <h3>Résolution Vidéo</h3>
+                        <select id="videoResolution">
+                            <option value="720">HD (720p)</option>
+                            <option value="1080" selected>Full HD (1080p)</option>
+                            <option value="1440">2K (1440p)</option>
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <h3>Timer par défaut</h3>
+                        <select id="defaultTimer">
+                            <option value="0" selected>Aucun</option>
+                            <option value="3">3 secondes</option>
+                            <option value="5">5 secondes</option>
+                            <option value="10">10 secondes</option>
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <h3>Son de capture</h3>
+                        <label class="switch">
+                            <input type="checkbox" id="soundToggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-group">
+                        <h3>Enregistrer les métadonnées</h3>
+                        <label class="switch">
+                            <input type="checkbox" id="metadataToggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timer Countdown -->
+        <div id="timerCountdown" class="timer-countdown hidden">
+            <div class="countdown-number">3</div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div id="toast" class="toast hidden"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
