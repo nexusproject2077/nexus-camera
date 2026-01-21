@@ -57,6 +57,7 @@ class NexusCamera {
         try {
             await this.setupCamera();
             this.setupEventListeners();
+            this.setupTouchSupport();
             this.startVideoProcessing();
             this.loadSettings();
             this.updateGallery();
@@ -203,6 +204,140 @@ class NexusCamera {
         document.querySelector('.video-container').addEventListener('click', (e) => {
             this.showFocusIndicator(e.clientX, e.clientY);
         });
+    }
+
+    setupTouchSupport() {
+        // Touch support for mobile devices
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchEndX = 0;
+        let touchEndY = 0;
+
+        const sidePanel = document.getElementById('sidePanel');
+        const galleryModal = document.getElementById('galleryModal');
+        const settingsModal = document.getElementById('settingsModal');
+
+        // Swipe to close side panel
+        sidePanel.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, false);
+
+        sidePanel.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            touchEndY = e.changedTouches[0].screenY;
+            this.handleSwipeGesture();
+        }, false);
+
+        // Double tap to toggle side panel on video
+        let lastTap = 0;
+        document.querySelector('.video-container').addEventListener('touchend', (e) => {
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTap;
+
+            if (tapLength < 300 && tapLength > 0) {
+                // Double tap detected
+                this.toggleSidePanel();
+                e.preventDefault();
+            }
+            lastTap = currentTime;
+        });
+
+        // Pinch to zoom (optional - can be enabled)
+        let initialDistance = 0;
+        document.querySelector('.video-container').addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                initialDistance = this.getTouchDistance(e.touches[0], e.touches[1]);
+            }
+        });
+
+        // Handle swipe gestures
+        const handleSwipeGesture = () => {
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+            const minSwipeDistance = 100;
+
+            // Right swipe to close panel
+            if (deltaX > minSwipeDistance && Math.abs(deltaY) < 100) {
+                if (sidePanel.classList.contains('open')) {
+                    this.toggleSidePanel();
+                }
+            }
+
+            // Down swipe to close modals
+            if (deltaY > minSwipeDistance && Math.abs(deltaX) < 100) {
+                if (!galleryModal.classList.contains('hidden')) {
+                    this.closeGallery();
+                }
+                if (!settingsModal.classList.contains('hidden')) {
+                    this.closeSettings();
+                }
+            }
+        };
+
+        this.handleSwipeGesture = handleSwipeGesture;
+
+        // Prevent default touch behaviors on controls
+        const controls = document.querySelectorAll('.icon-btn, .filter-btn, .mode-btn, .capture-btn');
+        controls.forEach(control => {
+            control.addEventListener('touchstart', (e) => {
+                control.classList.add('touched');
+            });
+            control.addEventListener('touchend', (e) => {
+                setTimeout(() => control.classList.remove('touched'), 300);
+            });
+        });
+
+        // Responsive camera resolution based on device
+        this.adjustCameraForDevice();
+    }
+
+    getTouchDistance(touch1, touch2) {
+        const dx = touch1.clientX - touch2.clientX;
+        const dy = touch1.clientY - touch2.clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    adjustCameraForDevice() {
+        // Adjust camera constraints based on screen size
+        const isMobile = window.innerWidth <= 768;
+
+        if (isMobile) {
+            // Lower resolution on mobile to improve performance
+            this.settings.videoResolution = 720;
+        }
+
+        // Listen for orientation changes
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                // Adjust canvas sizes after orientation change
+                if (this.video.videoWidth && this.video.videoHeight) {
+                    this.canvas.width = this.video.videoWidth;
+                    this.canvas.height = this.video.videoHeight;
+                    this.effectCanvas.width = this.video.videoWidth;
+                    this.effectCanvas.height = this.video.videoHeight;
+                }
+            }, 300);
+        });
+
+        // Handle resize events
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                this.handleResize();
+            }, 250);
+        });
+    }
+
+    handleResize() {
+        // Adjust UI elements on resize
+        const isMobile = window.innerWidth <= 768;
+
+        // Close side panel on desktop if it was open
+        if (!isMobile && document.getElementById('sidePanel').classList.contains('open')) {
+            this.toggleSidePanel();
+        }
     }
 
     startVideoProcessing() {
