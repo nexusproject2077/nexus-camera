@@ -41,8 +41,24 @@ class NexusCamera {
             vignette: 0
         };
 
+        // Pro Mode Controls (Samsung One UI 8)
+        this.proControls = {
+            iso: 400,
+            shutterSpeed: 'auto',
+            whiteBalance: 'auto',
+            focus: 50
+        };
+
+        // iOS 18 Features
+        this.photographicStyle = 'standard';
+        this.exposure = 0;
+        this.zoom = 1;
+
         // Gallery
         this.gallery = JSON.parse(localStorage.getItem('nexusGallery')) || [];
+
+        // Pro Mode Presets
+        this.proPresets = JSON.parse(localStorage.getItem('nexusProPresets')) || [];
 
         // Animation frame
         this.animationFrame = null;
@@ -238,9 +254,79 @@ class NexusCamera {
             this.saveSettings();
         });
 
+        // iOS 18 Features - Exposure Control
+        document.getElementById('exposureSlider').addEventListener('input', (e) => {
+            this.exposure = parseFloat(e.target.value);
+            document.getElementById('exposureValue').textContent = this.exposure.toFixed(1);
+        });
+
+        // Zoom Control
+        document.querySelectorAll('.zoom-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.zoom-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                this.zoom = parseFloat(e.target.dataset.zoom);
+                this.applyZoom();
+            });
+        });
+
+        // Photographic Styles
+        document.querySelectorAll('.style-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'));
+                e.currentTarget.classList.add('active');
+                this.photographicStyle = e.currentTarget.dataset.style;
+            });
+        });
+
+        // Pro Mode Controls (Samsung One UI 8)
+        document.getElementById('isoSlider')?.addEventListener('input', (e) => {
+            this.proControls.iso = parseInt(e.target.value);
+            document.getElementById('isoValue').textContent = this.proControls.iso;
+        });
+
+        document.getElementById('shutterSpeed')?.addEventListener('change', (e) => {
+            this.proControls.shutterSpeed = e.target.value;
+        });
+
+        document.getElementById('whiteBalance')?.addEventListener('change', (e) => {
+            this.proControls.whiteBalance = e.target.value;
+        });
+
+        document.getElementById('focusSlider')?.addEventListener('input', (e) => {
+            this.proControls.focus = parseInt(e.target.value);
+            document.getElementById('focusValue').textContent =
+                e.target.value == 50 ? 'Auto' : `${e.target.value}%`;
+        });
+
+        // Pro Mode Presets
+        document.getElementById('saveProPreset')?.addEventListener('click', () => this.saveProPreset());
+        document.getElementById('loadProPreset')?.addEventListener('click', () => this.loadProPreset());
+
         // Video container click for focus
         document.querySelector('.video-container').addEventListener('click', (e) => {
             this.showFocusIndicator(e.clientX, e.clientY);
+
+            // Show exposure control on tap (iOS style)
+            if (this.currentMode === 'photo' || this.currentMode === 'portrait') {
+                document.getElementById('exposureControl').classList.remove('hidden');
+                setTimeout(() => {
+                    document.getElementById('exposureControl').classList.add('hidden');
+                }, 5000);
+            }
+        });
+
+        // Mode tabs - update to show/hide Pro controls
+        const originalModeListener = this.currentMode;
+        document.querySelectorAll('.mode-tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                const mode = e.target.dataset.mode;
+                if (mode === 'pro') {
+                    document.getElementById('proControls')?.classList.remove('hidden');
+                } else {
+                    document.getElementById('proControls')?.classList.add('hidden');
+                }
+            });
         });
     }
 
@@ -419,8 +505,11 @@ class NexusCamera {
     }
 
     applyManualControls() {
-        const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+        let imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
         const data = imageData.data;
+
+        // Apply exposure (iOS 18)
+        const exposureFactor = 1 + (this.exposure * 0.5);
 
         // Apply brightness and contrast
         const brightness = this.controls.brightness;
@@ -428,6 +517,11 @@ class NexusCamera {
         const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
 
         for (let i = 0; i < data.length; i += 4) {
+            // Exposure
+            data[i] *= exposureFactor;
+            data[i + 1] *= exposureFactor;
+            data[i + 2] *= exposureFactor;
+
             // Contrast
             data[i] = factor * (data[i] - 128) + 128;
             data[i + 1] = factor * (data[i + 1] - 128) + 128;
@@ -449,6 +543,11 @@ class NexusCamera {
             data[i] = Math.max(0, Math.min(255, data[i]));
             data[i + 1] = Math.max(0, Math.min(255, data[i + 1]));
             data[i + 2] = Math.max(0, Math.min(255, data[i + 2]));
+        }
+
+        // Apply Photographic Style (iOS 18)
+        if (this.photographicStyle !== 'standard') {
+            imageData = this.applyPhotographicStyle(imageData);
         }
 
         this.ctx.putImageData(imageData, 0, 0);
@@ -1105,6 +1204,117 @@ class NexusCamera {
 
     saveGallery() {
         localStorage.setItem('nexusGallery', JSON.stringify(this.gallery));
+    }
+
+    // Zoom functionality
+    applyZoom() {
+        // Apply digital zoom using canvas scaling
+        this.showToast(`Zoom: ${this.zoom}×`, 'success');
+    }
+
+    // Photographic Styles (iOS 18)
+    applyPhotographicStyle(imageData) {
+        const data = imageData.data;
+
+        switch (this.photographicStyle) {
+            case 'vibrant':
+                for (let i = 0; i < data.length; i += 4) {
+                    data[i] = Math.min(255, data[i] * 1.3);
+                    data[i + 1] = Math.min(255, data[i + 1] * 1.3);
+                    data[i + 2] = Math.min(255, data[i + 2] * 1.3);
+                }
+                break;
+
+            case 'warm':
+                for (let i = 0; i < data.length; i += 4) {
+                    data[i] = Math.min(255, data[i] * 1.15); // More red
+                    data[i + 1] = Math.min(255, data[i + 1] * 1.05); // Slight green
+                    data[i + 2] = Math.min(255, data[i + 2] * 0.9); // Less blue
+                }
+                break;
+
+            case 'cool':
+                for (let i = 0; i < data.length; i += 4) {
+                    data[i] = Math.min(255, data[i] * 0.9); // Less red
+                    data[i + 1] = Math.min(255, data[i + 1] * 1.05); // Slight green
+                    data[i + 2] = Math.min(255, data[i + 2] * 1.15); // More blue
+                }
+                break;
+
+            case 'dramatic':
+                for (let i = 0; i < data.length; i += 4) {
+                    // Increase contrast
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    const avg = (r + g + b) / 3;
+
+                    if (avg < 128) {
+                        data[i] = r * 0.7;
+                        data[i + 1] = g * 0.7;
+                        data[i + 2] = b * 0.7;
+                    } else {
+                        data[i] = Math.min(255, r * 1.3);
+                        data[i + 1] = Math.min(255, g * 1.3);
+                        data[i + 2] = Math.min(255, b * 1.3);
+                    }
+                }
+                break;
+
+            case 'natural':
+                for (let i = 0; i < data.length; i += 4) {
+                    // Subtle desaturation
+                    const gray = 0.2989 * data[i] + 0.5870 * data[i + 1] + 0.1140 * data[i + 2];
+                    data[i] = gray + (data[i] - gray) * 0.85;
+                    data[i + 1] = gray + (data[i + 1] - gray) * 0.85;
+                    data[i + 2] = gray + (data[i + 2] - gray) * 0.85;
+                }
+                break;
+        }
+
+        return imageData;
+    }
+
+    // Pro Mode Preset Management (Samsung One UI 8)
+    saveProPreset() {
+        const preset = {
+            name: `Preset ${this.proPresets.length + 1}`,
+            iso: this.proControls.iso,
+            shutterSpeed: this.proControls.shutterSpeed,
+            whiteBalance: this.proControls.whiteBalance,
+            focus: this.proControls.focus,
+            timestamp: Date.now()
+        };
+
+        this.proPresets.push(preset);
+        localStorage.setItem('nexusProPresets', JSON.stringify(this.proPresets));
+        this.showToast(`Preset "${preset.name}" sauvegardé !`, 'success');
+    }
+
+    loadProPreset() {
+        if (this.proPresets.length === 0) {
+            this.showToast('Aucun preset sauvegardé', 'warning');
+            return;
+        }
+
+        // Load most recent preset
+        const preset = this.proPresets[this.proPresets.length - 1];
+
+        this.proControls.iso = preset.iso;
+        this.proControls.shutterSpeed = preset.shutterSpeed;
+        this.proControls.whiteBalance = preset.whiteBalance;
+        this.proControls.focus = preset.focus;
+
+        // Update UI
+        document.getElementById('isoSlider').value = preset.iso;
+        document.getElementById('isoValue').textContent = preset.iso;
+        document.getElementById('shutterSpeed').value = preset.shutterSpeed;
+        document.getElementById('whiteBalance').value = preset.whiteBalance;
+        document.getElementById('focusSlider').value = preset.focus;
+        document.getElementById('focusValue').textContent =
+            preset.focus == 50 ? 'Auto' : `${preset.focus}%`;
+
+        this.showToast(`Preset "${preset.name}" chargé !`, 'success');
     }
 
     showToast(message, type = 'success') {
