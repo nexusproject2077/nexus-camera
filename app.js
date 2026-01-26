@@ -94,6 +94,13 @@ class NexusCamera {
         this.canvas.height = this.video.videoHeight;
         this.effectCanvas.width = this.video.videoWidth;
         this.effectCanvas.height = this.video.videoHeight;
+
+        // Apply mirror effect for front camera
+        if (this.facingMode === 'user') {
+            this.video.classList.add('mirrored');
+        } else {
+            this.video.classList.remove('mirrored');
+        }
     }
 
     setupEventListeners() {
@@ -343,8 +350,18 @@ class NexusCamera {
     startVideoProcessing() {
         const processFrame = () => {
             if (!this.video.paused && !this.video.ended) {
-                // Draw video to canvas
-                this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
+                // Draw video to canvas with flip for front camera
+                this.ctx.save();
+
+                if (this.facingMode === 'user') {
+                    // Flip horizontally for front camera
+                    this.ctx.scale(-1, 1);
+                    this.ctx.drawImage(this.video, -this.canvas.width, 0, this.canvas.width, this.canvas.height);
+                } else {
+                    this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
+                }
+
+                this.ctx.restore();
 
                 // Apply filters and effects
                 this.applyManualControls();
