@@ -134,6 +134,11 @@ body {
     object-fit: contain;
 }
 
+/* Flip video for front camera (mirror effect) */
+#video.mirrored {
+    transform: scaleX(-1);
+}
+
 #effectCanvas {
     pointer-events: none;
     z-index: 10;
