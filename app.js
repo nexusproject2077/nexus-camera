@@ -50,11 +50,21 @@ class NexusCamera {
         // Particle system
         this.particles = [];
 
+        // Performance optimization
+        this.isMobile = window.innerWidth <= 768;
+        this.frameSkip = this.isMobile ? 2 : 1; // Skip frames on mobile for better performance
+        this.frameCount = 0;
+
+        // Available cameras
+        this.cameras = [];
+        this.currentCameraIndex = 0;
+
         this.init();
     }
 
     async init() {
         try {
+            await this.enumerateCameras();
             await this.setupCamera();
             this.setupEventListeners();
             this.setupTouchSupport();
@@ -68,12 +78,27 @@ class NexusCamera {
         }
     }
 
+    async enumerateCameras() {
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            this.cameras = devices.filter(device => device.kind === 'videoinput');
+            console.log(`Found ${this.cameras.length} camera(s):`, this.cameras);
+        } catch (error) {
+            console.error('Error enumerating cameras:', error);
+        }
+    }
+
     async setupCamera() {
+        // Adjust resolution based on device
+        const isMobile = window.innerWidth <= 768;
+        const idealWidth = isMobile ? 1280 : 1920;
+        const idealHeight = isMobile ? 720 : 1080;
+
         const constraints = {
             video: {
                 facingMode: this.facingMode,
-                width: { ideal: 1920 },
-                height: { ideal: 1080 }
+                width: { ideal: idealWidth },
+                height: { ideal: idealHeight }
             },
             audio: this.currentMode === 'video'
         };
@@ -89,11 +114,12 @@ class NexusCamera {
             };
         });
 
-        // Setup canvas sizes
-        this.canvas.width = this.video.videoWidth;
-        this.canvas.height = this.video.videoHeight;
-        this.effectCanvas.width = this.video.videoWidth;
-        this.effectCanvas.height = this.video.videoHeight;
+        // Setup canvas sizes (reduce on mobile for better performance)
+        const canvasScale = isMobile ? 0.75 : 1;
+        this.canvas.width = Math.floor(this.video.videoWidth * canvasScale);
+        this.canvas.height = Math.floor(this.video.videoHeight * canvasScale);
+        this.effectCanvas.width = this.canvas.width;
+        this.effectCanvas.height = this.canvas.height;
 
         // Apply mirror effect for front camera
         if (this.facingMode === 'user') {
@@ -171,6 +197,11 @@ class NexusCamera {
         document.getElementById('histogramBtn').addEventListener('click', () => this.toggleHistogram());
         document.getElementById('flashBtn').addEventListener('click', () => this.toggleFlash());
         document.getElementById('timerBtn').addEventListener('click', () => this.cycleTimer());
+
+        // Mobile top controls
+        document.getElementById('mobileFlashBtn').addEventListener('click', () => this.toggleFlash());
+        document.getElementById('mobileTimerBtn').addEventListener('click', () => this.cycleTimer());
+        document.getElementById('mobileSwitchBtn').addEventListener('click', () => this.switchCamera());
 
         // Modals
         document.getElementById('closeGalleryBtn').addEventListener('click', () => this.closeGallery());
@@ -350,27 +381,34 @@ class NexusCamera {
     startVideoProcessing() {
         const processFrame = () => {
             if (!this.video.paused && !this.video.ended) {
-                // Draw video to canvas with flip for front camera
-                this.ctx.save();
+                this.frameCount++;
 
-                if (this.facingMode === 'user') {
-                    // Flip horizontally for front camera
-                    this.ctx.scale(-1, 1);
-                    this.ctx.drawImage(this.video, -this.canvas.width, 0, this.canvas.width, this.canvas.height);
-                } else {
-                    this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
-                }
+                // Skip frames on mobile for better performance
+                if (this.frameCount % this.frameSkip === 0) {
+                    // Draw video to canvas with flip for front camera
+                    this.ctx.save();
 
-                this.ctx.restore();
+                    if (this.facingMode === 'user') {
+                        // Flip horizontally for front camera
+                        this.ctx.scale(-1, 1);
+                        this.ctx.drawImage(this.video, -this.canvas.width, 0, this.canvas.width, this.canvas.height);
+                    } else {
+                        this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
+                    }
 
-                // Apply filters and effects
-                this.applyManualControls();
-                this.applyFilter();
-                this.applyCreativeMode();
+                    this.ctx.restore();
 
-                // Update histogram if visible
-                if (!document.getElementById('histogram').classList.contains('hidden')) {
-                    this.updateHistogram();
+                    // Apply filters and effects (skip on mobile if filters are off)
+                    if (!this.isMobile || this.currentFilter !== 'none' || this.currentCreativeMode) {
+                        this.applyManualControls();
+                        this.applyFilter();
+                        this.applyCreativeMode();
+                    }
+
+                    // Update histogram if visible (less frequently on mobile)
+                    if (!document.getElementById('histogram').classList.contains('hidden') && this.frameCount % (this.frameSkip * 3) === 0) {
+                        this.updateHistogram();
+                    }
                 }
             }
 
@@ -838,16 +876,71 @@ class NexusCamera {
     }
 
     async switchCamera() {
-        this.facingMode = this.facingMode === 'user' ? 'environment' : 'user';
+        // If device has multiple cameras, cycle through them
+        if (this.cameras.length > 2) {
+            this.currentCameraIndex = (this.currentCameraIndex + 1) % this.cameras.length;
+            const selectedCamera = this.cameras[this.currentCameraIndex];
 
-        // Stop current stream
-        if (this.stream) {
-            this.stream.getTracks().forEach(track => track.stop());
+            // Stop current stream
+            if (this.stream) {
+                this.stream.getTracks().forEach(track => track.stop());
+            }
+
+            // Use specific camera device ID
+            const constraints = {
+                video: {
+                    deviceId: { exact: selectedCamera.deviceId },
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 }
+                },
+                audio: this.currentMode === 'video'
+            };
+
+            try {
+                this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+                this.video.srcObject = this.stream;
+
+                await new Promise(resolve => {
+                    this.video.onloadedmetadata = () => {
+                        this.video.play();
+                        resolve();
+                    };
+                });
+
+                // Update canvas sizes
+                this.canvas.width = this.video.videoWidth;
+                this.canvas.height = this.video.videoHeight;
+                this.effectCanvas.width = this.video.videoWidth;
+                this.effectCanvas.height = this.video.videoHeight;
+
+                // Determine if this is front or back camera
+                const label = selectedCamera.label.toLowerCase();
+                if (label.includes('front') || label.includes('user')) {
+                    this.facingMode = 'user';
+                    this.video.classList.add('mirrored');
+                } else {
+                    this.facingMode = 'environment';
+                    this.video.classList.remove('mirrored');
+                }
+
+                this.showToast(`Caméra: ${selectedCamera.label || 'Caméra ' + (this.currentCameraIndex + 1)}`, 'success');
+            } catch (error) {
+                console.error('Error switching camera:', error);
+                this.showToast('Erreur lors du changement de caméra', 'error');
+            }
+        } else {
+            // Simple front/back switch for devices with 2 cameras
+            this.facingMode = this.facingMode === 'user' ? 'environment' : 'user';
+
+            // Stop current stream
+            if (this.stream) {
+                this.stream.getTracks().forEach(track => track.stop());
+            }
+
+            // Setup new camera
+            await this.setupCamera();
+            this.showToast('Caméra changée', 'success');
         }
-
-        // Setup new camera
-        await this.setupCamera();
-        this.showToast('Caméra changée', 'success');
     }
 
     toggleSidePanel() {
@@ -866,6 +959,7 @@ class NexusCamera {
 
     toggleFlash() {
         document.getElementById('flashBtn').classList.toggle('active');
+        document.getElementById('mobileFlashBtn').classList.toggle('active');
         // Flash would be implemented with device flash API if available
         this.showToast('Flash basculé', 'success');
     }
@@ -877,11 +971,15 @@ class NexusCamera {
         this.timerSeconds = timers[nextIndex];
 
         const btn = document.getElementById('timerBtn');
+        const mobileBtn = document.getElementById('mobileTimerBtn');
+
         if (this.timerSeconds === 0) {
             btn.classList.remove('active');
+            mobileBtn.classList.remove('active');
             this.showToast('Timer désactivé', 'success');
         } else {
             btn.classList.add('active');
+            mobileBtn.classList.add('active');
             this.showToast(`Timer: ${this.timerSeconds}s`, 'success');
         }
     }
