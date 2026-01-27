@@ -1207,8 +1207,32 @@ class NexusCamera {
 
     // Zoom functionality
     applyZoom() {
-        // Apply digital zoom using canvas scaling
-        this.showToast(`Zoom: ${this.zoom}×`, 'success');
+        // Apply digital zoom by adjusting video constraints
+        if (this.stream) {
+            const track = this.stream.getVideoTracks()[0];
+            const capabilities = track.getCapabilities();
+
+            if (capabilities.zoom) {
+                const constraints = {
+                    advanced: [{ zoom: this.zoom }]
+                };
+                track.applyConstraints(constraints)
+                    .then(() => {
+                        this.showToast(`Zoom: ${this.zoom}×`, 'success');
+                    })
+                    .catch(() => {
+                        // Fallback: apply digital zoom via CSS transform
+                        this.video.style.transform = `scale(${this.zoom})`;
+                        this.showToast(`Zoom numérique: ${this.zoom}×`, 'success');
+                    });
+            } else {
+                // Digital zoom fallback
+                this.video.style.transform = this.facingMode === 'user'
+                    ? `scaleX(-${this.zoom}) scaleY(${this.zoom})`
+                    : `scale(${this.zoom})`;
+                this.showToast(`Zoom numérique: ${this.zoom}×`, 'success');
+            }
+        }
     }
 
     // Photographic Styles (iOS 18)
