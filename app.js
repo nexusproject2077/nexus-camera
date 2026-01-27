@@ -510,16 +510,49 @@ class NexusCamera {
         // Apply exposure (iOS 18)
         const exposureFactor = 1 + (this.exposure * 0.5);
 
+        // Apply Pro Mode ISO (affects brightness/noise simulation)
+        let isoFactor = 1.0;
+        if (this.currentMode === 'pro' && this.proControls.iso !== 400) {
+            isoFactor = this.proControls.iso / 400; // Normalize around ISO 400
+        }
+
         // Apply brightness and contrast
         const brightness = this.controls.brightness;
         const contrast = (this.controls.contrast - 100) * 2.55;
         const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+
+        // Pro Mode White Balance
+        let wbR = 1.0, wbG = 1.0, wbB = 1.0;
+        if (this.currentMode === 'pro' && this.proControls.whiteBalance !== 'auto') {
+            const wb = this.proControls.whiteBalance;
+            if (wb === 'daylight') {
+                wbR = 1.0; wbG = 1.0; wbB = 1.0;
+            } else if (wb === 'cloudy') {
+                wbR = 1.1; wbG = 1.0; wbB = 0.95;
+            } else if (wb === 'tungsten') {
+                wbR = 0.8; wbG = 0.9; wbB = 1.2;
+            } else if (wb === 'fluorescent') {
+                wbR = 0.9; wbG = 1.0; wbB = 1.1;
+            } else if (wb === 'shade') {
+                wbR = 1.15; wbG = 1.0; wbB = 0.9;
+            }
+        }
 
         for (let i = 0; i < data.length; i += 4) {
             // Exposure
             data[i] *= exposureFactor;
             data[i + 1] *= exposureFactor;
             data[i + 2] *= exposureFactor;
+
+            // ISO
+            data[i] *= isoFactor;
+            data[i + 1] *= isoFactor;
+            data[i + 2] *= isoFactor;
+
+            // White Balance (Pro Mode)
+            data[i] *= wbR;
+            data[i + 1] *= wbG;
+            data[i + 2] *= wbB;
 
             // Contrast
             data[i] = factor * (data[i] - 128) + 128;
@@ -551,11 +584,21 @@ class NexusCamera {
 
         this.ctx.putImageData(imageData, 0, 0);
 
-        // Apply blur
+        // Apply blur (normal blur control)
         if (this.controls.blur > 0) {
             this.ctx.filter = `blur(${this.controls.blur}px)`;
             this.ctx.drawImage(this.canvas, 0, 0);
             this.ctx.filter = 'none';
+        }
+
+        // Apply Pro Mode Focus (simulates focus distance with blur)
+        if (this.currentMode === 'pro' && this.proControls.focus !== 50) {
+            const focusBlur = Math.abs(this.proControls.focus - 50) / 10; // 0-5px blur
+            if (focusBlur > 0.5) {
+                this.ctx.filter = `blur(${focusBlur}px)`;
+                this.ctx.drawImage(this.canvas, 0, 0);
+                this.ctx.filter = 'none';
+            }
         }
 
         // Apply vignette
@@ -1207,8 +1250,32 @@ class NexusCamera {
 
     // Zoom functionality
     applyZoom() {
-        // Apply digital zoom using canvas scaling
-        this.showToast(`Zoom: ${this.zoom}×`, 'success');
+        // Apply digital zoom by adjusting video constraints
+        if (this.stream) {
+            const track = this.stream.getVideoTracks()[0];
+            const capabilities = track.getCapabilities();
+
+            if (capabilities.zoom) {
+                const constraints = {
+                    advanced: [{ zoom: this.zoom }]
+                };
+                track.applyConstraints(constraints)
+                    .then(() => {
+                        this.showToast(`Zoom: ${this.zoom}×`, 'success');
+                    })
+                    .catch(() => {
+                        // Fallback: apply digital zoom via CSS transform
+                        this.video.style.transform = `scale(${this.zoom})`;
+                        this.showToast(`Zoom numérique: ${this.zoom}×`, 'success');
+                    });
+            } else {
+                // Digital zoom fallback
+                this.video.style.transform = this.facingMode === 'user'
+                    ? `scaleX(-${this.zoom}) scaleY(${this.zoom})`
+                    : `scale(${this.zoom})`;
+                this.showToast(`Zoom numérique: ${this.zoom}×`, 'success');
+            }
+        }
     }
 
     // Photographic Styles (iOS 18)

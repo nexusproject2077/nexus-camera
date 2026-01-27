@@ -1,11 +1,13 @@
 // Nexus Camera Service Worker
 const CACHE_NAME = 'nexus-camera-v1.0.0';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/styles.css',
-  '/app.js',
-  '/manifest.json'
+  './',
+  './index.html',
+  './styles.css',
+  './app.js',
+  './manifest.json',
+  './icon-192.svg',
+  './icon-512.svg'
 ];
 
 // Install event
