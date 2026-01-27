@@ -70,6 +70,7 @@ class NexusCamera {
         this.isMobile = window.innerWidth <= 768;
         this.frameSkip = this.isMobile ? 2 : 1; // Skip frames on mobile for better performance
         this.frameCount = 0;
+        this.lastFrameTime = 0;
 
         // Available cameras
         this.cameras = [];
@@ -152,6 +153,14 @@ class NexusCamera {
                 document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
                 e.target.classList.add('active');
                 this.currentMode = e.target.dataset.mode;
+
+                // Show/hide Pro controls based on mode
+                const mode = e.target.dataset.mode;
+                if (mode === 'pro') {
+                    document.getElementById('proControls')?.classList.remove('hidden');
+                } else {
+                    document.getElementById('proControls')?.classList.add('hidden');
+                }
             });
         });
 
@@ -316,18 +325,6 @@ class NexusCamera {
             }
         });
 
-        // Mode tabs - update to show/hide Pro controls
-        const originalModeListener = this.currentMode;
-        document.querySelectorAll('.mode-tab').forEach(tab => {
-            tab.addEventListener('click', (e) => {
-                const mode = e.target.dataset.mode;
-                if (mode === 'pro') {
-                    document.getElementById('proControls')?.classList.remove('hidden');
-                } else {
-                    document.getElementById('proControls')?.classList.add('hidden');
-                }
-            });
-        });
     }
 
     setupTouchSupport() {
@@ -465,12 +462,16 @@ class NexusCamera {
     }
 
     startVideoProcessing() {
-        const processFrame = () => {
+        const processFrame = (timestamp) => {
             if (!this.video.paused && !this.video.ended) {
-                this.frameCount++;
+                // Throttle frame rate for better performance (60 FPS max)
+                const elapsed = timestamp - this.lastFrameTime;
+                const targetFrameTime = this.isMobile ? 33 : 16; // 30 FPS mobile, 60 FPS desktop
 
-                // Skip frames on mobile for better performance
-                if (this.frameCount % this.frameSkip === 0) {
+                if (elapsed >= targetFrameTime) {
+                    this.lastFrameTime = timestamp;
+                    this.frameCount++;
+
                     // Draw video to canvas with flip for front camera
                     this.ctx.save();
 
@@ -484,15 +485,13 @@ class NexusCamera {
 
                     this.ctx.restore();
 
-                    // Apply filters and effects (skip on mobile if filters are off)
-                    if (!this.isMobile || this.currentFilter !== 'none' || this.currentCreativeMode) {
-                        this.applyManualControls();
-                        this.applyFilter();
-                        this.applyCreativeMode();
-                    }
+                    // Apply filters and effects
+                    this.applyManualControls();
+                    this.applyFilter();
+                    this.applyCreativeMode();
 
-                    // Update histogram if visible (less frequently on mobile)
-                    if (!document.getElementById('histogram').classList.contains('hidden') && this.frameCount % (this.frameSkip * 3) === 0) {
+                    // Update histogram if visible (less frequently)
+                    if (!document.getElementById('histogram').classList.contains('hidden') && this.frameCount % 3 === 0) {
                         this.updateHistogram();
                     }
                 }
@@ -501,7 +500,7 @@ class NexusCamera {
             this.animationFrame = requestAnimationFrame(processFrame);
         };
 
-        processFrame();
+        processFrame(0);
     }
 
     applyManualControls() {
