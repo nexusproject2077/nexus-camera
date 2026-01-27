@@ -72,15 +72,29 @@ public class CameraActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_camera);
 
-        initViews();
-        setupListeners();
+        Log.d(TAG, "onCreate started");
 
-        if (checkPermissions()) {
-            setupCamera();
-        } else {
-            requestPermissions();
+        try {
+            setContentView(R.layout.activity_camera);
+
+            // Start background thread first
+            startBackgroundThread();
+
+            initViews();
+            setupListeners();
+
+            if (checkPermissions()) {
+                Log.d(TAG, "Permissions granted, setting up camera");
+                setupCamera();
+            } else {
+                Log.d(TAG, "Requesting permissions");
+                requestPermissions();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error in onCreate", e);
+            Toast.makeText(this, "Erreur d'initialisation: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            finish();
         }
     }
 
@@ -91,15 +105,36 @@ public class CameraActivity extends AppCompatActivity {
         flashButton = findViewById(R.id.btn_flash);
         settingsButton = findViewById(R.id.btn_settings);
         modeText = findViewById(R.id.tv_mode);
+
+        // Verify critical views
+        if (textureView == null) {
+            throw new RuntimeException("TextureView not found in layout");
+        }
+        if (captureButton == null) {
+            throw new RuntimeException("Capture button not found in layout");
+        }
+
+        Log.d(TAG, "All views initialized successfully");
     }
 
     private void setupListeners() {
         captureButton.setOnClickListener(v -> takePicture());
-        switchCameraButton.setOnClickListener(v -> switchCamera());
-        flashButton.setOnClickListener(v -> toggleFlash());
-        settingsButton.setOnClickListener(v -> openSettings());
+
+        if (switchCameraButton != null) {
+            switchCameraButton.setOnClickListener(v -> switchCamera());
+        }
+
+        if (flashButton != null) {
+            flashButton.setOnClickListener(v -> toggleFlash());
+        }
+
+        if (settingsButton != null) {
+            settingsButton.setOnClickListener(v -> openSettings());
+        }
 
         textureView.setSurfaceTextureListener(textureListener);
+
+        Log.d(TAG, "Listeners setup complete");
     }
 
     private final TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
@@ -156,21 +191,47 @@ public class CameraActivity extends AppCompatActivity {
     @SuppressLint("MissingPermission")
     private void openCamera() {
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+        if (manager == null) {
+            Log.e(TAG, "CameraManager is null");
+            runOnUiThread(() -> Toast.makeText(this, "Service caméra indisponible", Toast.LENGTH_SHORT).show());
+            return;
+        }
+
         try {
+            Log.d(TAG, "Opening camera...");
             cameraId = getCameraId(manager);
+            Log.d(TAG, "Camera ID: " + cameraId);
+
             CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
             StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-            assert map != null;
-            imageDimension = map.getOutputSizes(SurfaceTexture.class)[0];
+
+            if (map == null) {
+                Log.e(TAG, "StreamConfigurationMap is null");
+                return;
+            }
+
+            Size[] sizes = map.getOutputSizes(SurfaceTexture.class);
+            if (sizes == null || sizes.length == 0) {
+                Log.e(TAG, "No output sizes available");
+                return;
+            }
+
+            imageDimension = sizes[0];
+            Log.d(TAG, "Image dimension: " + imageDimension.getWidth() + "x" + imageDimension.getHeight());
 
             // ImageReader for capturing photos
             imageReader = ImageReader.newInstance(imageDimension.getWidth(), imageDimension.getHeight(),
                     ImageFormat.JPEG, 1);
             imageReader.setOnImageAvailableListener(onImageAvailableListener, backgroundHandler);
 
-            manager.openCamera(cameraId, stateCallback, null);
+            manager.openCamera(cameraId, stateCallback, backgroundHandler);
+            Log.d(TAG, "Camera open request sent");
         } catch (CameraAccessException e) {
             Log.e(TAG, "Camera access error", e);
+            runOnUiThread(() -> Toast.makeText(this, "Erreur d'accès caméra: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+        } catch (SecurityException e) {
+            Log.e(TAG, "Camera permission error", e);
+            runOnUiThread(() -> Toast.makeText(this, "Permission caméra refusée", Toast.LENGTH_SHORT).show());
         }
     }
 
@@ -322,8 +383,11 @@ public class CameraActivity extends AppCompatActivity {
 
     private void toggleFlash() {
         isFlashOn = !isFlashOn;
-        flashButton.setAlpha(isFlashOn ? 1.0f : 0.5f);
+        if (flashButton != null) {
+            flashButton.setAlpha(isFlashOn ? 1.0f : 0.5f);
+        }
         updatePreview();
+        Log.d(TAG, "Flash " + (isFlashOn ? "ON" : "OFF"));
     }
 
     private void openSettings() {
@@ -349,11 +413,20 @@ public class CameraActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        startBackgroundThread();
-        if (textureView.isAvailable()) {
-            openCamera();
-        } else {
-            textureView.setSurfaceTextureListener(textureListener);
+        Log.d(TAG, "onResume");
+
+        // Make sure background thread is running
+        if (backgroundThread == null) {
+            startBackgroundThread();
+        }
+
+        // Only open camera if we have permissions
+        if (checkPermissions()) {
+            if (textureView != null && textureView.isAvailable()) {
+                openCamera();
+            } else if (textureView != null) {
+                textureView.setSurfaceTextureListener(textureListener);
+            }
         }
     }
 
@@ -365,9 +438,17 @@ public class CameraActivity extends AppCompatActivity {
     }
 
     private void startBackgroundThread() {
-        backgroundThread = new HandlerThread("Camera Background");
-        backgroundThread.start();
-        backgroundHandler = new Handler(backgroundThread.getLooper());
+        try {
+            if (backgroundThread == null || !backgroundThread.isAlive()) {
+                Log.d(TAG, "Starting background thread");
+                backgroundThread = new HandlerThread("Camera Background");
+                backgroundThread.start();
+                backgroundHandler = new Handler(backgroundThread.getLooper());
+                Log.d(TAG, "Background thread started");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error starting background thread", e);
+        }
     }
 
     private void stopBackgroundThread() {
