@@ -30,17 +30,27 @@
         android:hardwareAccelerated="true"
         tools:targetApi="31">
 
+        <!-- Native Camera Activity (Main) -->
         <activity
-            android:name=".MainActivity"
+            android:name=".CameraActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:screenOrientation="portrait"
             android:exported="true"
-            android:theme="@style/AppTheme">
+            android:theme="@style/CameraTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- WebView Activity (Fallback) -->
+        <activity
+            android:name=".MainActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:screenOrientation="portrait"
+            android:exported="false"
+            android:theme="@style/AppTheme" />
+
 
         <!-- File Provider for camera/gallery -->
         <provider
