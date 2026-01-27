@@ -1,0 +1,179 @@
+╔══════════════════════════════════════════════════════════════════╗
+║                    NEXUS CAMERA - ANDROID                        ║
+║                  INSTRUCTIONS ULTRA-SIMPLES                      ║
+╚══════════════════════════════════════════════════════════════════╝
+
+📱 VOUS VOULEZ JUSTE TESTER L'APP ?
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 MÉTHODE 1: ANDROID STUDIO (Le plus simple!)
+
+  1. Téléchargez Android Studio:
+     👉 https://developer.android.com/studio
+
+  2. Installez-le (suivez le wizard, tout automatique)
+
+  3. Ouvrez Android Studio
+
+  4. File → Open → Sélectionnez le dossier "android-app"
+
+  5. Attendez 5-10 minutes (première fois seulement)
+     ☕ Gradle télécharge les dépendances
+
+  6. Branchez votre téléphone Android en USB
+     - Activez "Mode développeur" (voir ci-dessous)
+     - Activez "Débogage USB"
+
+  7. Cliquez sur le bouton vert ▶️ en haut
+
+  ✅ FINI! L'app s'installe automatiquement!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 MÉTHODE 2: FICHIER ZIP + ANDROID STUDIO
+
+  1. Téléchargez le fichier:
+     📦 nexus-camera-android-project.zip
+
+  2. Décompressez-le (clic droit → Extraire)
+
+  3. Suivez les étapes 1-7 de la MÉTHODE 1 ci-dessus
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 MÉTHODE 3: LIGNE DE COMMANDE (Pour geeks)
+
+  Terminal / CMD:
+
+  cd android-app
+  ./build-apk.sh
+
+  Puis:
+
+  adb install app/build/outputs/apk/debug/app-debug.apk
+
+  ✅ FINI!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📱 ACTIVER LE MODE DÉVELOPPEUR SUR ANDROID
+
+  1. Paramètres → À propos du téléphone
+  2. Appuyez 7 fois sur "Numéro de build"
+  3. Message: "Vous êtes développeur!"
+  4. Retour → Options pour développeurs
+  5. Activez "Débogage USB"
+  6. Branchez le câble USB
+  7. Sur le téléphone: Autorisez le débogage
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📦 FICHIERS DISPONIBLES
+
+  📂 android-app/                      (Projet complet)
+  📦 nexus-camera-android-project.zip  (Projet compressé)
+  📦 nexus-camera-android-project.tar.gz (Alternative)
+
+  Après compilation:
+  📱 app/build/outputs/apk/debug/app-debug.apk (APK installable)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❓ PROBLÈMES?
+
+  "Gradle sync failed"
+  → Attendez, ça peut prendre 10 minutes
+  → File → Invalidate Caches → Restart
+
+  "No devices found"
+  → Vérifiez USB debugging activé
+  → adb devices (pour vérifier)
+
+  "Permission denied"
+  → chmod +x build-apk.sh
+  → chmod +x gradlew
+
+  Caméra ne marche pas
+  → Donnez les permissions dans Paramètres Android
+  → Testez sur VRAI téléphone (pas émulateur)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📚 PLUS D'INFOS
+
+  📄 android-app/README.md           (Guide complet)
+  📄 android-app/QUICK_START.md      (Démarrage rapide)
+  📄 TELECHARGER-ET-INSTALLER.md     (Guide détaillé)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎉 RÉCAPITULATIF
+
+  VOUS VOULEZ:                      → FAITES:
+  ═══════════════════════════════════════════════════════════
+
+  Tester rapidement                 → Méthode 1 (Android Studio)
+
+  Avoir le projet complet           → Téléchargez le ZIP
+
+  Compiler vous-même                → ./build-apk.sh
+
+  Juste installer l'app             → Utilisez l'APK déjà compilé
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⏱️  TEMPS ESTIMÉ
+
+  Installation Android Studio:       15-30 minutes
+  Premier build Gradle:              5-10 minutes
+  Builds suivants:                   30 secondes
+  Installation APK sur téléphone:    5 secondes
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💾 ESPACE DISQUE NÉCESSAIRE
+
+  Android Studio:                    ~3 GB
+  Android SDK:                       ~2 GB
+  Projet:                            ~50 MB
+  Build outputs:                     ~20 MB
+
+  TOTAL: ~5 GB
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 COMMANDES UTILES
+
+  Build APK:
+    cd android-app
+    ./gradlew assembleDebug
+
+  Installer APK:
+    adb install app-debug.apk
+
+  Voir logs:
+    adb logcat | grep NexusCamera
+
+  Lister appareils:
+    adb devices
+
+  Lancer l'app:
+    adb shell am start -n com.nexus.camera/.MainActivity
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚀 BON DÉVELOPPEMENT!
+
+Si vous suivez la MÉTHODE 1, vous aurez l'app qui tourne sur votre
+téléphone en moins de 30 minutes (incluant l'installation d'Android
+Studio).
+
+C'est vraiment aussi simple que:
+  1. Installer Android Studio
+  2. Ouvrir le dossier android-app
+  3. Cliquer Run ▶️
+
+✨ Et voilà! Votre Nexus Camera tourne sur Android! ✨
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
